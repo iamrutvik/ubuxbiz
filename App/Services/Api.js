@@ -2,7 +2,7 @@
 import apisauce from 'apisauce'
 
 // our "constructor"
-const create = (baseURL = 'https://api.github.com/') => {
+const create = (baseURL = 'http://ubux.biz/') => {
   // ------
   // STEP 1
   // ------
@@ -34,9 +34,14 @@ const create = (baseURL = 'https://api.github.com/') => {
   // Since we can't hide from that, we embrace it by getting out of the
   // way at this level.
   //
-  const getRoot = () => api.get('')
-  const getRate = () => api.get('rate_limit')
-  const getUser = (username) => api.get('search/users', {q: username})
+  // const getRoot = () => api.get('')
+  // const getRate = () => api.get('rate_limit')
+  // const getUser = (username) => api.get('search/users', {q: username})
+
+  const getStores = () => api.get('test/get-all-stores')
+  const searchStores = (keyword) => api.post('/test/search-store', {keyword: keyword})
+  const getStoreDetails = (id) => api.get('test/get-store?storeId=' + id)
+  const getStoreProducts = (id) => api.get('test/get-store-products?storeId=' + id)
 
   // ------
   // STEP 3
@@ -52,9 +57,10 @@ const create = (baseURL = 'https://api.github.com/') => {
   //
   return {
     // a list of the API functions from step 2
-    getRoot,
-    getRate,
-    getUser
+    getStores,
+    searchStores,
+    getStoreDetails,
+    getStoreProducts
   }
 }
 
