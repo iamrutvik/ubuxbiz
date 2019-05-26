@@ -1,8 +1,8 @@
 import React, { Component } from 'react'
-import { FlatList, Text, View } from 'react-native'
+import { FlatList, Text, View, TouchableHighlight } from 'react-native'
 import { connect } from 'react-redux'
 // Add Actions - replace 'Your' with whatever your reducer is called :)
-// import YourActions from '../Redux/YourRedux'
+import CartActions from '../Redux/CartRedux'
 
 // Styles
 import styles from './Styles/ProductScreenStyle'
@@ -12,11 +12,13 @@ import { Colors, Metrics } from '../Themes'
 import ParallaxScrollView from 'react-native-parallax-scroll-view';
 import ProductActions from '../Redux/ProductRedux'
 import { BallIndicator } from 'react-native-indicators'
+import immutablePersistenceTransform from '../Services/ImmutablePersistenceTransform'
 
 type ProductScreenProps = {
   dispatch: () => any,
   fetching: boolean,
-  attemptProducts: () => void
+  attemptProducts: () => void,
+  attemptAddProducts: () => void
 };
 
 class ProductScreen extends Component {
@@ -27,13 +29,16 @@ class ProductScreen extends Component {
     fetching: boolean,
     payload: Object,
     error: string,
+    cartFetching: boolean,
+    cartPayload: Object,
+    cartError: string,
     storeName: string,
     id: string,
     loading: boolean,
     bgColor: Object
   };
 
-  constructor (props: StoresScreenProps) {
+  constructor (props: ProductScreenProps) {
     super(props)
 
     this.state = {
@@ -43,12 +48,15 @@ class ProductScreen extends Component {
       storeName: null,
       id: null,
       loading: false,
-      bgColor: Colors.coal
+      bgColor: Colors.coal,
+      cartFetching: false,
+      cartPayload: null,
+      cartError: null
     }
   }
 
   static getDerivedStateFromProps (nextProps, prevState) {
-    if (!nextProps.fetching && prevState.loading && nextProps.payload) {
+    if (!nextProps.fetching && prevState.loading) {
       if (nextProps.error) {
         Toast.show({
           text: nextProps.error,
@@ -65,6 +73,19 @@ class ProductScreen extends Component {
           payload: nextProps.payload
         }
       }
+    } else if (!nextProps.cartFetching) {
+      if (nextProps.cartError) {
+        Toast.show({
+          text: nextProps.cartError,
+          buttonText: 'Okay',
+          type: 'danger',
+          duration: 3000
+        })
+      } else {
+        return {
+          cartPayload: nextProps.cartPayload
+        }
+      }
     }
     return prevState
   }
@@ -78,7 +99,6 @@ class ProductScreen extends Component {
       this.setState({ loading: true })
       this.props.attemptProducts(this.props.navigation.getParam('id'))
     }
-    //call store and product APIS
   }
 
   renderForeGround = () => {
@@ -104,8 +124,9 @@ class ProductScreen extends Component {
           <Thumbnail square source={{ uri: item.imageUrl }} />
         </Left>
         <Body style={{flexDirection: 'column'}}>
-          <Text>{item.name}</Text>
-          <Text style={{fontSize: 15, marginRight: 5}}>${item.priceCash}</Text>
+          <Text style={styles.boldText}>{item.name}</Text>
+          <Text>{item.description}</Text>
+          <Text style={styles.amountText}>${item.priceCash}</Text>
         </Body>
         <Right>
           <Icon name='add-circle' style={{fontSize: 40}} />
@@ -115,7 +136,22 @@ class ProductScreen extends Component {
   }
 
   onPressStore = item => {
-    this.props.navigation.navigate('ProductScreen', {id: item.storeId ? item.storeId : item.ownerId, name: item.tradingName.toUpperCase() })
+    const { cartPayload } = this.state
+    let jsCartPayload = immutablePersistenceTransform.in(cartPayload)
+    let jsItem = immutablePersistenceTransform.in(item)
+    if (jsCartPayload && jsCartPayload.length > 0) {
+      var foundIndex = jsCartPayload.findIndex(x => x._id == jsItem._id)
+      if (foundIndex >= 0) {
+        jsCartPayload[foundIndex].quantity = jsCartPayload[foundIndex].quantity + 1
+      } else {
+        jsItem.quantity = 1
+        jsCartPayload.push(jsItem)
+      }
+    } else {
+      jsItem.quantity = 1
+      jsCartPayload.push(jsItem)
+    }
+    this.props.attemptAddProducts(jsCartPayload)
   }
 
   renderEmptyItem = () => {
@@ -130,7 +166,6 @@ class ProductScreen extends Component {
   keyExtractor = (item, index) => 'key-' + index;
 
   renderList = () => {
-    console.log(this.state.payload)
     return (
       <FlatList
         data={this.state.payload ? this.state.payload.products : null}
@@ -141,6 +176,14 @@ class ProductScreen extends Component {
     )
   }
 
+  calculateProducts = () => {
+    let total = 0
+    _.forEach(this.state.cartPayload, (item) => {
+      total = total + item.quantity
+    })
+    return total
+  }
+
   render () {
     return (
       <Container>
@@ -149,9 +192,9 @@ class ProductScreen extends Component {
           fadeOutForeground
           contentBackgroundColor={Colors.transparent}
           parallaxHeaderHeight={200}
-          stickyHeaderHeight={80}
+          stickyHeaderHeight={90}
           onChangeHeaderVisibility={(status) => !status ? this.setState({bgColor: Colors.snow}) : this.setState({bgColor: Colors.coal})}
-          renderStickyHeader = { () => (
+          renderStickyHeader ={() => (
             <Header noLeft transparent>
               <Left>
                 <Button transparent onPress={() => this.props.navigation.goBack()}>
@@ -171,6 +214,12 @@ class ProductScreen extends Component {
           </View>
           { this.state.loading ? <BallIndicator color={Colors.fire} size={30} /> : this.renderList() }
         </ParallaxScrollView>
+        <TouchableHighlight style={styles.cartView} onPress={() => this.props.navigation.navigate('CartScreen')}>
+          <Icon name='cart' style={{color: Colors.snow}} />
+        </TouchableHighlight>
+        <TouchableHighlight style={styles.productCount} onPress={() => this.props.navigation.navigate('CartScreen')}>
+          <Text style={styles.storeProductDesc}>{this.calculateProducts()}</Text>
+        </TouchableHighlight>
       </Container>
     )
   }
@@ -180,13 +229,17 @@ const mapStateToProps = (state) => {
   return {
     fetching: state.products.fetching,
     payload: state.products.payload,
-    error: state.products.error
+    error: state.products.error,
+    cartFetching: state.cart.fetching,
+    cartPayload: state.cart.payload,
+    cartError: state.cart.error
   }
 }
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    attemptProducts: (id) => dispatch(ProductActions.productRequest(id))
+    attemptProducts: (id) => dispatch(ProductActions.productRequest(id)),
+    attemptAddProducts: (item) => dispatch(CartActions.cartRequest(item))
   }
 }
 

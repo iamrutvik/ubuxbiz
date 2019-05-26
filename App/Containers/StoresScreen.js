@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { FlatList, View } from 'react-native'
+import { FlatList, TouchableHighlight, View } from 'react-native'
 // Add Actions - replace 'Your' with whatever your reducer is called :)
 import StoresActions from '../Redux/StoresRedux'
 import {Container, Header, Left, Body, Right, Button, Icon, Title, Toast, ListItem, Text, Fab, Item, Input} from 'native-base'
@@ -11,6 +11,7 @@ import { Colors } from '../Themes'
 import _ from 'lodash'
 import API from '../Services/Api'
 const api = API.create()
+import CartActions from '../Redux/CartRedux'
 
 type StoresScreenProps = {
   dispatch: () => any,
@@ -30,7 +31,10 @@ class StoresScreen extends Component {
     loading: boolean,
     active: boolean,
     originalData: Object,
-    searchLoading: boolean
+    searchLoading: boolean,
+    cartFetching: boolean,
+    cartPayload: Object,
+    cartError: string,
   };
 
   constructor (props: StoresScreenProps) {
@@ -45,7 +49,10 @@ class StoresScreen extends Component {
       loading: false,
       active: false,
       originalData: null,
-      searchLoading: false
+      searchLoading: false,
+      cartFetching: false,
+      cartPayload: null,
+      cartError: null
     }
   }
 
@@ -67,6 +74,19 @@ class StoresScreen extends Component {
           loading: false,
           payload: data,
           originalData: data
+        }
+      }
+    } else if (!nextProps.cartFetching) {
+      if (nextProps.cartError) {
+        Toast.show({
+          text: nextProps.cartError,
+          buttonText: 'Okay',
+          type: 'danger',
+          duration: 3000
+        })
+      } else {
+        return {
+          cartPayload: nextProps.cartPayload
         }
       }
     }
@@ -206,6 +226,14 @@ class StoresScreen extends Component {
     })
   }
 
+  calculateProducts = () => {
+    let total = 0
+    _.forEach(this.state.cartPayload, (item) => {
+      total = total + item.quantity
+    })
+    return total
+  }
+
   render () {
     return (
       <Container>
@@ -221,7 +249,7 @@ class StoresScreen extends Component {
           active={this.state.active}
           direction='up'
           containerStyle={{ }}
-          style={{ backgroundColor: '#5067FF' }}
+          style={{ backgroundColor: Colors.fire }}
           position='bottomRight'
           onPress={() => this.setState({ active: !this.state.active })}>
           <Icon type='FontAwesome' name='filter' />
@@ -235,6 +263,13 @@ class StoresScreen extends Component {
             <Icon type='MaterialIcons' name='refresh' style={{fontSize: 30}} />
           </Button>
         </Fab>
+        <TouchableHighlight style={styles.cartView} onPress={() => this.props.navigation.navigate('CartScreen')}>
+          <Icon name='cart' style={{color: Colors.snow}} />
+        </TouchableHighlight>
+        <TouchableHighlight style={styles.productCount} onPress={() => this.props.navigation.navigate('CartScreen')}>
+          <Text style={styles.storeProductDesc}>{this.calculateProducts()}</Text>
+        </TouchableHighlight>
+
       </Container>
     )
   }
@@ -244,7 +279,10 @@ const mapStateToProps = (state) => {
   return {
     fetching: state.stores.fetching,
     error: state.stores.error,
-    payload: state.stores.payload
+    payload: state.stores.payload,
+    cartFetching: state.cart.fetching,
+    cartPayload: state.cart.payload,
+    cartError: state.cart.error
   }
 }
 

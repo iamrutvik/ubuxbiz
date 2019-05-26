@@ -26,10 +26,13 @@ export function * getProducts (api, action) {
   if (storeResponse.ok && productResponse.ok) {
     // You might need to change the response here - do this with a 'transform',
     // located in ../Transforms/. Otherwise, just pass the data back from the api.
-    let response = storeResponse.data.store
-    response.products = productResponse.data.products
-    console.log(response)
-    yield put(ProductActions.productSuccess(response))
+    if (storeResponse.data.success) {
+      let response = storeResponse.data.store
+      response.products = productResponse.data.products
+      yield put(ProductActions.productSuccess(response))
+    } else {
+      yield put(ProductActions.productFailure(storeResponse.data.message))
+    }
   } else {
     switch (storeResponse.problem) {
       case 'NETWORK_ERROR':

@@ -1,4 +1,4 @@
-import { takeLatest, all } from 'redux-saga/effects'
+import { takeLatest, all, takeEvery } from 'redux-saga/effects'
 import API from '../Services/Api'
 import FixtureAPI from '../Services/FixtureApi'
 import DebugConfig from '../Config/DebugConfig'
@@ -7,11 +7,13 @@ import DebugConfig from '../Config/DebugConfig'
 
 import { StoresTypes } from '../Redux/StoresRedux'
 import { ProductTypes } from '../Redux/ProductRedux'
+import { CartTypes } from '../Redux/CartRedux'
 
 /* ------------- Sagas ------------- */
 
 import { getStores } from './StoresSagas'
 import { getProducts } from './ProductSagas'
+import { addCart, removeCart } from './CartSagas'
 
 /* ------------- API ------------- */
 
@@ -24,6 +26,8 @@ const api = DebugConfig.useFixtures ? FixtureAPI : API.create()
 export default function * root () {
   yield all([
     takeLatest(StoresTypes.STORES_REQUEST, getStores, api),
-    takeLatest(ProductTypes.PRODUCT_REQUEST, getProducts, api)
+    takeLatest(ProductTypes.PRODUCT_REQUEST, getProducts, api),
+    takeEvery(CartTypes.CART_REQUEST, addCart),
+    takeEvery(CartTypes.CART_REMOVE_REQUEST, removeCart)
   ])
 }
