@@ -217,9 +217,11 @@ class ProductScreen extends Component {
         <TouchableHighlight style={styles.cartView} onPress={() => this.props.navigation.navigate('CartScreen')}>
           <Icon name='cart' style={{color: Colors.snow}} />
         </TouchableHighlight>
-        <TouchableHighlight style={styles.productCount} onPress={() => this.props.navigation.navigate('CartScreen')}>
-          <Text style={styles.storeProductDesc}>{this.calculateProducts()}</Text>
-        </TouchableHighlight>
+        {
+          this.calculateProducts() > 0 ? <TouchableHighlight style={styles.productCount} onPress={() => this.props.navigation.navigate('CartScreen')}>
+            <Text style={styles.storeProductDesc}>{this.calculateProducts()}</Text>
+          </TouchableHighlight>: null
+        }
       </Container>
     )
   }
